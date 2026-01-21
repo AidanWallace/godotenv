@@ -19,12 +19,14 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 )
 
 const doubleQuoteSpecialChars = "\\\n\r\"!$`"
+const envRegex = `^.*\.env(\..+)?$`
 
 // Parse reads an env file from io.Reader, returning a map of keys and values.
 func Parse(r io.Reader) (map[string]string, error) {
@@ -60,6 +62,26 @@ func Load(filenames ...string) (err error) {
 	return
 }
 
+// LoadAll will read all env files matching the pattern and load them into ENV for this process.
+//
+// Call this function as close as possible to the start of your program (ideally in main).
+//
+// If you call LoadAll without any args it will default to loading all files matching the .env pattern.
+// This includes files like .env, .env.testing, testing.env, etc.
+//
+// You can otherwise provide custom regex patterns to match specific files like:
+//
+//	godotenv.LoadAll(`^\.env\.production$`, `^config\..*`)
+//
+// It's important to note that it WILL NOT OVERRIDE an env variable that already exists - consider the .env files to set dev vars or sensible defaults.
+func LoadAll(patterns ...string) (err error) {
+	filenames, err := allFilenames(patterns...)
+	if err != nil {
+		return err
+	}
+	return Load(filenames...)
+}
+
 // Overload will read your env file(s) and load them into ENV for this process.
 //
 // Call this function as close as possible to the start of your program (ideally in main).
@@ -81,6 +103,26 @@ func Overload(filenames ...string) (err error) {
 		}
 	}
 	return
+}
+
+// OverloadAll will read all env files matching the pattern and load them into ENV for this process.
+//
+// Call this function as close as possible to the start of your program (ideally in main).
+//
+// If you call OverloadAll without any args it will default to loading all files matching the .env pattern.
+// This includes files like .env, .env.testing, testing.env, etc.
+//
+// You can otherwise provide custom regex patterns to match specific files like:
+//
+//	godotenv.OverloadAll(`^\.env\.production$`, `^config\..*`)
+//
+// It's important to note this WILL OVERRIDE an env variable that already exists - consider the .env files to forcefully set all vars.
+func OverloadAll(patterns ...string) (err error) {
+	filenames, err := allFilenames(patterns...)
+	if err != nil {
+		return err
+	}
+	return Overload(filenames...)
 }
 
 // Read all env (with same file loading semantics as Load) but return values as
@@ -179,6 +221,53 @@ func filenamesOrDefault(filenames []string) []string {
 		return []string{".env"}
 	}
 	return filenames
+}
+
+func allFilenames(patterns ...string) ([]string, error) {
+	if len(patterns) == 0 {
+		patterns = []string{envRegex}
+	}
+
+	filenames, err := getEnvFiles(patterns...)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(filenames) == 0 {
+		return []string{".env"}, nil
+	}
+
+	return filenames, nil
+}
+
+func getEnvFiles(patterns ...string) ([]string, error) {
+	entries, err := os.ReadDir(".")
+	if err != nil {
+		return nil, err
+	}
+
+	compiledPatterns := make([]*regexp.Regexp, len(patterns))
+	for i, p := range patterns {
+		compiledPatterns[i] = regexp.MustCompile(p)
+	}
+
+	var envFiles []string
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			patternMatch(compiledPatterns, entry.Name(), &envFiles)
+		}
+	}
+
+	return envFiles, nil
+}
+
+func patternMatch(compiledPatterns []*regexp.Regexp, filename string, envFiles *[]string) {
+	for _, pattern := range compiledPatterns {
+		if pattern.MatchString(filename) {
+			*envFiles = append(*envFiles, filename)
+			break
+		}
+	}
 }
 
 func loadFile(filename string, overload bool) error {

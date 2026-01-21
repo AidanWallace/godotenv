@@ -143,6 +143,43 @@ godotenv.Load() // The Original .env
 If you need to, you can also use `godotenv.Overload()` to defy this convention
 and overwrite existing envs instead of only supplanting them. Use with caution.
 
+### Loading All Matching Files
+
+If you want to automatically load all files matching a pattern, you can use `godotenv.LoadAll()` or `godotenv.OverloadAll()`.
+
+By default, these functions will load all files matching the `.env` pattern in the current directory. This includes files like `.env`, `.env.local`, `testing.env`, etc.
+
+```go
+// Load all .env files without overwriting existing environment variables
+err := godotenv.LoadAll()
+if err != nil {
+  log.Fatal("Error loading .env files")
+}
+```
+
+You can also provide custom regex patterns to match specific files:
+
+```go
+// Load only .env.production and config.* files
+err := godotenv.LoadAll(`^\.env\.production$`, `^config\..*`)
+if err != nil {
+  log.Fatal("Error loading env files")
+}
+```
+
+If you need to overwrite existing environment variables, use `godotenv.OverloadAll()`:
+
+```go
+// Load all .env files and overwrite existing environment variables
+err := godotenv.OverloadAll()
+if err != nil {
+  log.Fatal("Error loading .env files")
+}
+
+// Or with custom patterns
+err := godotenv.OverloadAll(`^\.env\.production$`, `^config\..*`)
+```
+
 ### Command Mode
 
 Assuming you've installed the command as above and you've got `$GOPATH/bin` in your `$PATH`
