@@ -6,7 +6,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/joho/godotenv"
+	"github.com/aidanwallace/godotenv"
 )
 
 func main() {
