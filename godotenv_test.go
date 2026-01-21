@@ -53,11 +53,104 @@ func TestLoadWithNoArgsLoadsDotEnv(t *testing.T) {
 	}
 }
 
+func TestLoadAllWithNoArgsLoadsDotEnv(t *testing.T) {
+	err := LoadAll()
+	pathError := err.(*os.PathError)
+	if pathError == nil || pathError.Op != "open" || pathError.Path != ".env" {
+		t.Errorf("Didn't try and open .env by default")
+	}
+}
+
+func TestLoadAllWithCustomPattern(t *testing.T) {
+	os.Clearenv()
+
+	originalDir, _ := os.Getwd()
+	os.Chdir("fixtures")
+	defer os.Chdir(originalDir)
+
+	err := LoadAll(`^\.env\.testing$`)
+	if err != nil {
+		t.Errorf("Expected LoadAll to succeed, got error: %v", err)
+	}
+
+	if os.Getenv("LOCAL_VAR") != "localvalue" {
+		t.Errorf("Expected LOCAL_VAR to be 'localvalue', got '%s'", os.Getenv("LOCAL_VAR"))
+	}
+}
+
+func TestLoadAllWithMultiplePatterns(t *testing.T) {
+	os.Clearenv()
+
+	originalDir, _ := os.Getwd()
+	os.Chdir("fixtures")
+	defer os.Chdir(originalDir)
+
+	err := LoadAll(`^\.env\.production$`, `^testing\.env$`)
+	if err != nil {
+		t.Errorf("Expected LoadAll to succeed, got error: %v", err)
+	}
+
+	if os.Getenv("PROD_VAR") != "prodvalue" {
+		t.Errorf("Expected PROD_VAR to be 'prodvalue', got '%s'", os.Getenv("PROD_VAR"))
+	}
+	if os.Getenv("TEST_VAR") != "testvalue" {
+		t.Errorf("Expected TEST_VAR to be 'testvalue', got '%s'", os.Getenv("TEST_VAR"))
+	}
+}
+
 func TestOverloadWithNoArgsOverloadsDotEnv(t *testing.T) {
 	err := Overload()
 	pathError := err.(*os.PathError)
 	if pathError == nil || pathError.Op != "open" || pathError.Path != ".env" {
 		t.Errorf("Didn't try and open .env by default")
+	}
+}
+
+func TestOverloadAllWithNoArgsOverloadsDotEnv(t *testing.T) {
+	err := OverloadAll()
+	pathError := err.(*os.PathError)
+	if pathError == nil || pathError.Op != "open" || pathError.Path != ".env" {
+		t.Errorf("Didn't try and open .env by default")
+	}
+}
+
+func TestOverloadAllWithCustomPattern(t *testing.T) {
+	os.Clearenv()
+	os.Setenv("LOCAL_VAR", "original")
+
+	originalDir, _ := os.Getwd()
+	os.Chdir("fixtures")
+	defer os.Chdir(originalDir)
+
+	err := OverloadAll(`^\.env\.testing$`)
+	if err != nil {
+		t.Errorf("Expected OverloadAll to succeed, got error: %v", err)
+	}
+
+	if os.Getenv("LOCAL_VAR") != "localvalue" {
+		t.Errorf("Expected LOCAL_VAR to be overloaded to 'localvalue', got '%s'", os.Getenv("LOCAL_VAR"))
+	}
+}
+
+func TestOverloadAllWithMultiplePatterns(t *testing.T) {
+	os.Clearenv()
+	os.Setenv("PROD_VAR", "original_prod")
+	os.Setenv("TEST_VAR", "original_test")
+
+	originalDir, _ := os.Getwd()
+	os.Chdir("fixtures")
+	defer os.Chdir(originalDir)
+
+	err := OverloadAll(`^\.env\.production$`, `^testing\.env$`)
+	if err != nil {
+		t.Errorf("Expected OverloadAll to succeed, got error: %v", err)
+	}
+
+	if os.Getenv("PROD_VAR") != "prodvalue" {
+		t.Errorf("Expected PROD_VAR to be overloaded to 'prodvalue', got '%s'", os.Getenv("PROD_VAR"))
+	}
+	if os.Getenv("TEST_VAR") != "testvalue" {
+		t.Errorf("Expected TEST_VAR to be overloaded to 'testvalue', got '%s'", os.Getenv("TEST_VAR"))
 	}
 }
 
